@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: gateway
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            # google cloud console의 OAuth Client ID / PW
+            client-id: ${GCP_CLIENT_ID}
+            client-secret: ${GCP_CLIENT_PASSWORD}
+            # 원하는 scope 추가
+            scope:
+              - email
+            # redirect-url 설정. 이 Base Code 제작자는 저 페이지 운영중입니당
+            redirect-uri: "https://api.spampredict.store/login/oauth2/code/google"
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+  datasource:
+    url: jdbc:mariadb://localhost:3306/${DATABASE_NAME}
+    username: ${DATABASE_ID}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+      show-sql: true
+
+app:
+  security:
+    secret:
+      jwt: ${JWT_SECRET_KEY} # terminal > openssl rand -base64 64
+      aes: ${AES_SECRET_KEY} # terminal > openssl rand -base64 32
+      crypto: ${CRYPTO_SECRET_KEY} # terminal > openssl rand -base64 32
+
+    cors:
+      allowed-origins:
+        - https://spampredict.store
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
