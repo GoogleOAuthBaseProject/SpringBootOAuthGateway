@@ -1,6 +1,5 @@
 package com.han.youtubespam.gateway.controller;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
@@ -9,8 +8,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.han.youtubespam.gateway.consts.CookieConstant;
@@ -21,15 +20,15 @@ import com.han.youtubespam.gateway.provider.JwtProvider;
 import com.han.youtubespam.gateway.type.TokenPair;
 
 import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 	private final JwtProvider jwtProvider;
 
-	@PostMapping("/auth/complete")
+	@PostMapping("/complete")
 	public ResponseEntity<?> oAuthCompleteAndGenToken(
 		@CookieValue(value = CookieConstant.OAUTH_NONCE_TOKEN) String tt
 	) {
@@ -40,10 +39,26 @@ public class AuthController {
 				.build();
 		}
 
-		return ResponseEntity.ok().build();
+		UUID memberId = jwtProvider.getUserId(tt);
+		TokenPair tokenPair = jwtProvider.reissue(memberId);
+
+		ResponseCookie refreshTokenCookie = ResponseCookie
+			.from(CookieConstant.REFRESH_TOKEN, tokenPair.refreshToken())
+			.httpOnly(true)
+			.secure(true)
+			.sameSite("None")
+			.path("/")
+			.maxAge(Duration.ofDays(14))
+			.build();
+
+		return ResponseEntity.ok()
+			.header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+			.body(Map.of(
+				"accessToken", tokenPair.accessToken()
+			));
 	}
 
-	@PostMapping("/auth/refresh")
+	@PostMapping("/refresh")
 	public ResponseEntity<?> refresh(
 		@CookieValue(value = CookieConstant.REFRESH_TOKEN, required = false) String rt
 	) {
@@ -73,16 +88,5 @@ public class AuthController {
 		return ResponseEntity.ok()
 			.header(HeaderConstant.SET_COOKIE, refreshTokenCookie.toString())
 			.body(Map.of("accessToken", tokenPair.accessToken()));
-	}
-
-	@GetMapping("/_debug/cookie")
-	public void debug(HttpServletResponse response) throws IOException {
-		ResponseCookie cookie = ResponseCookie.from("DEBUG", "1234")
-			.path("/")
-			.maxAge(300)
-			.build();
-
-		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-		response.getWriter().write("ok");
 	}
 }
