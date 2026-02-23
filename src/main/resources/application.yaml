@@ -12,6 +12,7 @@ spring:
             # 원하는 scope 추가
             scope:
               - email
+              - https://www.googleapis.com/auth/youtube.force-ssl
             # redirect-url 설정. 이 Base Code 제작자는 저 페이지 운영중입니당
             redirect-uri: "https://api.spampredict.store/login/oauth2/code/google"
   data:
@@ -45,6 +46,12 @@ app:
     cors:
       allowed-origins:
         - https://spampredict.store
+        - http://localhost:5173
+
+  ip:
+    crawler: ${SERVER_CRAWLER_PATH}
+    predict: ${SERVER_PREDICT_PATH}
+    front: ${FRONTEND_PATH}
 
 logging:
   level:

@@ -1,6 +1,7 @@
 package com.han.youtubespam.gateway.handler;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Date;
 
 import org.springframework.http.HttpHeaders;
@@ -16,13 +17,16 @@ import org.springframework.stereotype.Component;
 
 import com.han.youtubespam.gateway.consts.CookieConstant;
 import com.han.youtubespam.gateway.consts.FilterConstant;
+import com.han.youtubespam.gateway.consts.GoogleConstant;
 import com.han.youtubespam.gateway.consts.JwtConstant;
 import com.han.youtubespam.gateway.consts.TimeConstant;
 import com.han.youtubespam.gateway.entity.MemberEntity;
+import com.han.youtubespam.gateway.property.ServerIPProperties;
 import com.han.youtubespam.gateway.provider.JwtProvider;
 import com.han.youtubespam.gateway.service.MemberService;
+import com.han.youtubespam.gateway.type.GoogleTokenPair;
 import com.han.youtubespam.gateway.type.OauthAttributePair;
-import com.han.youtubespam.gateway.type.TokenPair;
+import com.han.youtubespam.gateway.utils.TokenUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,6 +40,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 	private final OAuth2AuthorizedClientService authorizedClientService;
 	private final MemberService memberService;
 	private final JwtProvider jwtProvider;
+	private final ServerIPProperties ipProperties;
 
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -49,28 +54,28 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 		OAuth2User user = auth.getPrincipal();
 		OauthAttributePair attrPair = new OauthAttributePair(user.getAttribute("sub"), user.getAttribute("email"));
 
-		TokenPair googleTokenPair = new TokenPair(
-			client.getAccessToken().getTokenValue(),
-			client.getRefreshToken() == null ? "" : client.getRefreshToken().getTokenValue()
+		GoogleTokenPair googleTokenPair = new GoogleTokenPair(
+			client.getAccessToken(),
+			client.getRefreshToken() == null ? null : client.getRefreshToken()
 		);
-		MemberEntity memberEntity = memberService.getOrSignup(attrPair, googleTokenPair);
-		String tempToken = jwtProvider.issue(memberEntity.getUuid(), JwtConstant.JWT_TYPE_TEMP, new Date(),
+		boolean hasYoutubeAccess = googleTokenPair.accessToken().getScopes().contains(GoogleConstant.YOUTUBE_SCOPE);
+		MemberEntity memberEntity = memberService.getOrSignup(attrPair, googleTokenPair, hasYoutubeAccess);
+		log.info("$youtube access? {}", hasYoutubeAccess);
+
+		String tempToken = jwtProvider.issueRtTt(memberEntity.getUuid(), JwtConstant.JWT_TYPE_TEMP, new Date(),
 			TimeConstant.EXP_MILLIS_MIN * 5);
 
-		ResponseCookie cookie = ResponseCookie.from(CookieConstant.OAUTH_NONCE_TOKEN, tempToken)
-			.httpOnly(true)
-			.secure(true)
-			.sameSite("None")
-			.path("/")
-			.maxAge(TimeConstant.EXP_MILLIS_MIN * 5 / 1000)
-			.build();
+		ResponseCookie cookie = TokenUtil.genResponseCookie(CookieConstant.OAUTH_NONCE_TOKEN, tempToken,
+			Duration.ofMillis(TimeConstant.EXP_MILLIS_MIN * 5));
 
 		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
 		String from = (String)request.getSession()
 			.getAttribute(FilterConstant.OAUTH_CONTEXT);
+
+		log.info("${} ${}", from, "web".equals(from));
 		if ("web".equals(from))
-			response.sendRedirect("https://spampredict.store/after-login");
+			response.sendRedirect(ipProperties.getFront() + "/after-login");
 
 	}
 

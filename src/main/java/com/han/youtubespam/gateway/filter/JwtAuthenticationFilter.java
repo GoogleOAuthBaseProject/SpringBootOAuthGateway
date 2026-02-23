@@ -6,11 +6,14 @@ import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.han.youtubespam.gateway.consts.JwtConstant;
+import com.han.youtubespam.gateway.entity.MemberRole;
 import com.han.youtubespam.gateway.provider.JwtProvider;
 
 import jakarta.servlet.FilterChain;
@@ -35,15 +38,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		boolean isValid = jwtProvider.validate(token, JwtConstant.JWT_TYPE_ACCESS);
-		UUID userId = jwtProvider.getUserId(token);
-		if (!isValid || userId == null) {
+		UUID memberId = jwtProvider.getMemberId(token);
+		MemberRole role = jwtProvider.getMemberRole(token);
+		if (!isValid || memberId == null || role == null) {
 			response.setStatus(401);
 			response.setHeader("X-Auth-Error", "INVALID_TOKEN");
 			filterChain.doFilter(request, response);
 			return;
 		}
 
-		Authentication auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
+		GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.name());
+		Authentication auth = new UsernamePasswordAuthenticationToken(memberId, null, List.of(authority));
 		SecurityContextHolder.getContext().setAuthentication(auth);
 
 		filterChain.doFilter(request, response);

@@ -1,6 +1,6 @@
 package com.han.youtubespam.gateway.type;
 
-public record TokenPair(
+public record JWTTokenPair(
 	String accessToken,
 	String refreshToken
 ) {

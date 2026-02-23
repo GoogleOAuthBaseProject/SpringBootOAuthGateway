@@ -2,6 +2,7 @@ package com.han.youtubespam.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -12,20 +13,29 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 import com.han.youtubespam.gateway.filter.JwtAuthenticationFilter;
 import com.han.youtubespam.gateway.filter.OAuthContextFilter;
+import com.han.youtubespam.gateway.handler.OAuth2LoginFailureHandler;
 import com.han.youtubespam.gateway.handler.OAuth2LoginSuccessHandler;
 import com.han.youtubespam.gateway.resolver.JwtAuthorizationRequestResolver;
 
 import lombok.RequiredArgsConstructor;
 
 @Configuration
+@EnableMethodSecurity
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 	private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+	private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 	private final JwtAuthorizationRequestResolver oAuthRequestResolver;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final OAuthContextFilter oAuthContextFilter;
 	private final CorsConfigurationSource corsConfigurationSource;
+
+	private final String[] IGNORE_LIST = {
+		"/error", "/oauth/**", "/login/**", "/auth/refresh",
+		"/auth/complete", "/_debug/**",
+		"/youtube/trending",
+	};
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -38,18 +48,16 @@ public class SecurityConfig {
 			.addFilterBefore(oAuthContextFilter,
 				OAuth2AuthorizationRequestRedirectFilter.class)
 			.authorizeHttpRequests(
-				auth -> auth.requestMatchers("/oauth/**", "/login/**", "/auth/refresh", "/auth/complete", "/_debug/**")
-					.permitAll()
-					.anyRequest()
-					.authenticated())
+				auth ->
+					auth
+						.requestMatchers(IGNORE_LIST).permitAll()
+						.anyRequest().authenticated()
+			)
 			.oauth2Login(oauth -> oauth
 				.authorizationEndpoint(
 					endpoint -> endpoint.authorizationRequestResolver(oAuthRequestResolver))
 				.successHandler(oAuth2LoginSuccessHandler)
-				.failureHandler((request, response, exception) -> {
-					System.out.println("❌ OAuth 로그인 실패");
-					exception.printStackTrace();
-				})
+				.failureHandler(oAuth2LoginFailureHandler)
 			);
 		return http.build();
 	}

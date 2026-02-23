@@ -12,7 +12,9 @@ import org.springframework.stereotype.Component;
 
 import com.han.youtubespam.gateway.consts.JwtConstant;
 import com.han.youtubespam.gateway.consts.TimeConstant;
-import com.han.youtubespam.gateway.type.TokenPair;
+import com.han.youtubespam.gateway.entity.MemberEntity;
+import com.han.youtubespam.gateway.entity.MemberRole;
+import com.han.youtubespam.gateway.type.JWTTokenPair;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -30,20 +32,20 @@ public class JwtProvider {
 		this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
 
-	public String issue(UUID userId, String type) {
-		Date now = new Date();
-		Date exp = new Date(now.getTime() + EXP_ACCESS_TOKEN);
+	public String issueAt(UUID userId, MemberRole role, String type, Date now, Long expMillis) {
+		Date exp = new Date(now.getTime() + expMillis);
 
 		return Jwts.builder()
 			.subject(userId.toString())
 			.claim(JwtConstant.JWT_TYPE, type)
+			.claim(JwtConstant.JWT_TYPE_ROLE, role.name())
 			.issuedAt(now)
 			.expiration(exp)
 			.signWith(key)
 			.compact();
 	}
 
-	public String issue(UUID userId, String type, Date now, Long expMillis) {
+	public String issueRtTt(UUID userId, String type, Date now, Long expMillis) {
 		Date exp = new Date(now.getTime() + expMillis);
 
 		return Jwts.builder()
@@ -55,12 +57,12 @@ public class JwtProvider {
 			.compact();
 	}
 
-	public TokenPair reissue(UUID userId) {
+	public JWTTokenPair reissue(MemberEntity memberEntity) {
 		Date now = new Date();
-		String accessToken = issue(userId, "at", now, EXP_ACCESS_TOKEN);
-		String refreshToken = issue(userId, "rt", now, EXP_REFRESH_TOKEN);
+		String accessToken = issueAt(memberEntity.getUuid(), memberEntity.getRole(), "at", now, EXP_ACCESS_TOKEN);
+		String refreshToken = issueRtTt(memberEntity.getUuid(), "rt", now, EXP_REFRESH_TOKEN);
 
-		return new TokenPair(accessToken, refreshToken);
+		return new JWTTokenPair(accessToken, refreshToken);
 	}
 
 	public Claims getClaims(String token) {
@@ -88,10 +90,20 @@ public class JwtProvider {
 		}
 	}
 
-	public UUID getUserId(String token) {
+	public UUID getMemberId(String token) {
 		try {
 			Claims claims = getClaims(token);
 			return UUID.fromString(claims.getSubject());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	public MemberRole getMemberRole(String token) {
+		try {
+			Claims claims = getClaims(token);
+			String roleName = claims.get(JwtConstant.JWT_TYPE_ROLE, String.class);
+			return MemberRole.valueOf(roleName);
 		} catch (Exception e) {
 			return null;
 		}

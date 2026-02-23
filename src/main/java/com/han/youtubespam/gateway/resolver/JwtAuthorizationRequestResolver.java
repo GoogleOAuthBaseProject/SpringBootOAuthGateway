@@ -59,7 +59,7 @@ public class JwtAuthorizationRequestResolver implements OAuth2AuthorizationReque
 		if (auth != null && auth.startsWith("Bearer ")) {
 			String accessToken = auth.substring(7);
 			if (!jwtProvider.validate(accessToken, JwtConstant.JWT_TYPE_ACCESS)
-				|| jwtProvider.getUserId(accessToken) == null)
+				|| jwtProvider.getMemberId(accessToken) == null)
 				params.put("prompt", "consent");
 		} else {
 			params.put("prompt", "consent");
