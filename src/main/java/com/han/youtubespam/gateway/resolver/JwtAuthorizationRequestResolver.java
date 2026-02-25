@@ -1,7 +1,9 @@
 package com.han.youtubespam.gateway.resolver;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
@@ -9,24 +11,18 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
 
-import com.han.youtubespam.gateway.consts.JwtConstant;
-import com.han.youtubespam.gateway.provider.JwtProvider;
-
 import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtAuthorizationRequestResolver implements OAuth2AuthorizationRequestResolver {
 	private final OAuth2AuthorizationRequestResolver delegate;
-	private final JwtProvider jwtProvider;
 
 	public JwtAuthorizationRequestResolver(
-		ClientRegistrationRepository repo,
-		JwtProvider jwtProvider
+		ClientRegistrationRepository repo
 	) {
 		this.delegate = new DefaultOAuth2AuthorizationRequestResolver(
 			repo, "/oauth2/authorization"
 		);
-		this.jwtProvider = jwtProvider;
 	}
 
 	@Override
@@ -52,21 +48,36 @@ public class JwtAuthorizationRequestResolver implements OAuth2AuthorizationReque
 		if (base == null)
 			return null;
 
+		String registrationId = request.getServletPath()
+			.replace("/oauth2/authorization/", "");
+
+		return switch (registrationId) {
+			case "google" -> _google(request, base);
+			default -> _base(base);
+		};
+	}
+
+	private OAuth2AuthorizationRequest _base(
+		OAuth2AuthorizationRequest base
+	) {
+		return OAuth2AuthorizationRequest.from(base).build();
+	}
+
+	private OAuth2AuthorizationRequest _google(
+		HttpServletRequest request,
+		OAuth2AuthorizationRequest base
+	) {
 		Map<String, Object> params = new HashMap<>(base.getAdditionalParameters());
 		params.put("access_type", "offline");
 
-		String auth = request.getHeader("Authorization");
-		if (auth != null && auth.startsWith("Bearer ")) {
-			String accessToken = auth.substring(7);
-			if (!jwtProvider.validate(accessToken, JwtConstant.JWT_TYPE_ACCESS)
-				|| jwtProvider.getMemberId(accessToken) == null)
-				params.put("prompt", "consent");
-		} else {
-			params.put("prompt", "consent");
-		}
+		Set<String> scopes = new HashSet<>(base.getScopes());
+		String mode = request.getParameter("mode");
+		if ("connect".equals(mode))
+			scopes.add("https://www.googleapis.com/auth/youtube.force-ssl");
 
 		return OAuth2AuthorizationRequest.from(base)
 			.additionalParameters(params)
+			.scopes(scopes)
 			.build();
 	}
 

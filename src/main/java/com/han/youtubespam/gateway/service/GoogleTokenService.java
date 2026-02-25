@@ -56,6 +56,17 @@ public class GoogleTokenService {
 			.uri("/revoke")
 			.contentType(MediaType.APPLICATION_FORM_URLENCODED)
 			.body(BodyInserters.fromFormData("token", refreshToken))
+			// .exchangeToMono(response -> {
+			// 	if (response.statusCode().is2xxSuccessful()) {
+			// 		return response.toBodilessEntity();
+			// 	} else {
+			// 		return response.bodyToMono(String.class)
+			// 			.flatMap(body -> {
+			// 				System.out.println("Google revoke error body: " + body);
+			// 				return Mono.error(new RuntimeException("Revoke failed: " + body));
+			// 			});
+			// 	}
+			// })
 			.retrieve()
 			.toBodilessEntity()
 			.block();

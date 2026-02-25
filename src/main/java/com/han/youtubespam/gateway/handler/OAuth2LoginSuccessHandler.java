@@ -73,7 +73,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 		String from = (String)request.getSession()
 			.getAttribute(FilterConstant.OAUTH_CONTEXT);
 
-		log.info("${} ${}", from, "web".equals(from));
 		if ("web".equals(from))
 			response.sendRedirect(ipProperties.getFront() + "/after-login");
 
