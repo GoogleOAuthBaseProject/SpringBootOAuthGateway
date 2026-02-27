@@ -1,12 +1,17 @@
 package com.han.youtubespam.gateway.entity;
 
+import java.time.Instant;
 import java.util.UUID;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.han.youtubespam.gateway.type.ChannelDataPair;
 import com.han.youtubespam.gateway.type.YoutubeChannelDataPair;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -35,6 +40,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class MemberEntity {
 	@Id
 	@GeneratedValue
@@ -73,6 +79,10 @@ public class MemberEntity {
 
 	@Column
 	private String fcmToken;
+
+	@CreatedDate
+	@Column(updatable = false, nullable = false)
+	private Instant createdAt;
 
 	@Column
 	@Builder.Default

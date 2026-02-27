@@ -12,7 +12,6 @@ spring:
             # 원하는 scope 추가
             scope:
               - email
-              - https://www.googleapis.com/auth/youtube.force-ssl
             # redirect-url 설정. 이 Base Code 제작자는 저 페이지 운영중입니당
             redirect-uri: "https://api.spampredict.store/login/oauth2/code/google"
   data:
@@ -25,6 +24,8 @@ spring:
     username: ${DATABASE_ID}
     password: ${DATABASE_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
+  jackson:
+    time-zone: UTC
   jpa:
     hibernate:
       ddl-auto: update
@@ -33,7 +34,7 @@ spring:
         dialect: org.hibernate.dialect.MariaDBDialect
         format_sql: true
         jdbc:
-          time_zone: Asia/Seoul
+          time_zone: UTC
       show-sql: true
 
 app:
