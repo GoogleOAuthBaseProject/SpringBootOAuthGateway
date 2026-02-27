@@ -18,14 +18,16 @@ import org.springframework.web.bind.annotation.RestController;
 import com.han.youtubespam.gateway.consts.SseConstant;
 import com.han.youtubespam.gateway.service.MemberService;
 import com.han.youtubespam.gateway.service.MessagingService;
+import com.han.youtubespam.gateway.type.member.MemberRoleUpdateRequest;
 import com.han.youtubespam.gateway.type.page.FindMemberRequestDto;
 import com.han.youtubespam.gateway.type.page.FindMemberResponseDto;
 import com.han.youtubespam.gateway.type.page.PageResponse;
-import com.han.youtubespam.gateway.type.page.UpdateMemberRoleRequestDto;
 
-import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @PreAuthorize("hasRole('DEVELOPER')")
 @RequestMapping("/admin")
@@ -43,19 +45,20 @@ public class AdminController {
 		return ResponseEntity.ok(PageResponse.from(page));
 	}
 
-	@Transactional
-	@DeleteMapping("/withdraw/{uuid}")
-	public void forceSingout(@PathVariable("uuid") UUID uuid) {
+	@DeleteMapping("/members/{uuid}")
+	public ResponseEntity<Void> forceWithdraw(@PathVariable("uuid") UUID uuid) {
 		memberService.withdrawal(uuid);
 		messagingService.send(uuid, SseConstant.SSE_MEMBER_UPDATE);
+
+		return ResponseEntity.noContent().build();
 	}
 
-	// sse나 fcm 메시지 전달
-	@PatchMapping("/role/{uuid}")
-	public void updateRole(@PathVariable("uuid") UUID uuid, @RequestBody UpdateMemberRoleRequestDto body) {
-		memberService.updateRole(uuid, body.role());
-		// redis sse broadcast 후 모든 서버가 읽어 처리
-		// 현재는 단일 서버니 sse는 여기서만 처리
+	@PatchMapping("/members/{uuid}/role")
+	public ResponseEntity<Void> updateMember(@PathVariable("uuid") UUID uuid,
+		@Valid @RequestBody MemberRoleUpdateRequest request) {
+		memberService.updateRole(uuid, request.role());
 		messagingService.send(uuid, SseConstant.SSE_MEMBER_UPDATE);
+
+		return ResponseEntity.noContent().build();
 	}
 }
