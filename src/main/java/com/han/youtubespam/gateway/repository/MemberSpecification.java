@@ -12,7 +12,7 @@ import jakarta.persistence.criteria.Root;
 public class MemberSpecification {
 	public static Specification<MemberEntity> search(FindMemberRequestDto dto) {
 		return (root, query, cb) -> {
-			if (dto == null)
+			if (dto == null || dto.isEmpty())
 				return cb.conjunction();
 
 			String term = "%" + dto.term().toLowerCase() + "%";
@@ -23,6 +23,7 @@ public class MemberSpecification {
 				);
 				case HANDLER -> likeIgnoreCase(cb, root, "channelHandler", term);
 				case NAME -> likeIgnoreCase(cb, root, "channelName", term);
+				case UUID -> likeIgnoreCase(cb, root, "uuid", term);
 			};
 		};
 	}

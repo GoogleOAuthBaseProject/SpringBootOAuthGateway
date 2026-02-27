@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,14 +38,6 @@ public class MemberController {
 
 		MemberMeResponse responseDto = new MemberMeResponse(member);
 		return ResponseEntity.ok(responseDto);
-	}
-
-	@PostMapping("/signout")
-	public ResponseEntity<?> logout() {
-		ResponseCookie removeRefreshToken = TokenUtil.revokeResponseCookie(CookieConstant.REFRESH_TOKEN);
-		HttpHeaders headers = new HttpHeaders();
-		headers.add(HttpHeaders.SET_COOKIE, removeRefreshToken.toString());
-		return ResponseEntity.noContent().headers(headers).build();
 	}
 
 	@DeleteMapping("/withdraw")

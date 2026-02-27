@@ -64,7 +64,7 @@ public class MemberService {
 				pageable
 			)
 			.map(member -> new FindMemberResponseDto(member.getUuid(), member.getChannelHandler(),
-				member.getChannelName()));
+				member.getChannelName(), member.getRole()));
 	}
 
 	@Transactional
@@ -117,8 +117,7 @@ public class MemberService {
 
 	@Transactional
 	public void updateRole(UUID uuid, MemberRole role) {
-		MemberEntity member = memberRepository.findByUuid(uuid)
-			.orElseThrow(() -> new RuntimeException("Member not found"));
+		MemberEntity member = getMember(uuid);
 		member.setRole(role);
 	}
 
@@ -126,9 +125,8 @@ public class MemberService {
 	public void withdrawal(UUID uuid) {
 		MemberEntity member = getMember(uuid);
 		String googleRefreshToken = aesCodec.decrypt(member.getGoogleRt());
-		memberRepository.delete(member);
-
 		googleTokenService.revokeGoogleToken(googleRefreshToken);
+		memberRepository.delete(member);
 	}
 
 	public MemberEntity getMember(UUID uuid) {
